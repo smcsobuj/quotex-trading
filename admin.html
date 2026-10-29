@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="bn" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quotex Pro - Master Admin Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        tradeDark: '#0b0e14',
+                        tradePanel: '#151a24',
+                        tradeCard: '#1d2331',
+                        tradeBorder: '#273043',
+                        tradeGreen: '#00c853',
+                        tradeRed: '#ff3d00',
+                        tradeBlue: '#2962ff',
+                        tradeGold: '#ffd700'
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+</head>
+<body class="bg-tradeDark text-gray-200 min-h-screen flex flex-col font-sans select-none">
+
+    <!-- Admin Password Protection Modal -->
+    <div id="adminAuthModal" class="fixed inset-0 bg-black/95 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-tradePanel border border-tradeBorder rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-4">
+            <div class="text-center">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-tr from-rose-600 to-amber-500 flex items-center justify-center font-black text-white text-2xl mx-auto shadow-lg mb-2">
+                    <i class="fas fa-user-shield"></i>
+                </div>
+                <h2 class="text-xl font-bold text-white">Master Admin Login</h2>
+                <p class="text-xs text-gray-400 mt-1">Enter password to manage platform</p>
+            </div>
+            <div>
+                <label class="block text-[11px] font-semibold text-gray-400 mb-1">Secret Admin Password</label>
+                <input type="password" id="adminPassInput" placeholder="••••••••" class="w-full bg-tradeDark border border-tradeBorder rounded-xl p-3 text-sm text-white focus:outline-none focus:border-tradeBlue font-mono">
+            </div>
+            <button id="adminLoginBtn" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-extrabold py-3 rounded-xl shadow-lg transition text-xs tracking-wider uppercase">
+                Unlock Dashboard
+            </button>
+        </div>
+    </div>
+
+    <!-- Admin Top Header -->
+    <header class="h-14 bg-tradePanel border-b border-tradeBorder flex items-center justify-between px-4 sticky top-0 z-40 shadow-md">
+        <div class="flex items-center space-x-3">
+            <div class="w-8 h-8 rounded-lg bg-rose-600 flex items-center justify-center font-black text-white text-lg">
+                <i class="fas fa-shield-alt text-sm"></i>
+            </div>
+            <div>
+                <span class="font-extrabold text-base tracking-wider text-white">ADMIN<span class="text-rose-500">MASTER CONTROL</span></span>
+                <span class="text-[9px] text-emerald-400 font-mono block -mt-1"><i class="fas fa-signal mr-1"></i>Firebase Live Realtime Database</span>
+            </div>
+        </div>
+        <button id="adminLogoutBtn" class="bg-tradeCard hover:bg-rose-500/20 text-rose-400 border border-tradeBorder px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5">
+            <i class="fas fa-lock"></i>
+            <span>Lock Panel</span>
+        </button>
+    </header>
+
+    <!-- Main Admin Workspace -->
+    <div class="flex-1 p-4 max-w-6xl w-full mx-auto space-y-6">
+
+        <!-- Stat Overview Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="bg-tradePanel border border-tradeBorder p-4 rounded-2xl flex items-center justify-between shadow-lg">
+                <div>
+                    <span class="text-gray-400 text-xs font-semibold block">Total Registered Users</span>
+                    <span id="totalUsersCount" class="text-2xl font-bold text-white">0</span>
+                </div>
+                <div class="p-3 bg-tradeBlue/20 text-tradeBlue rounded-xl"><i class="fas fa-users text-xl"></i></div>
+            </div>
+            <div class="bg-tradePanel border border-tradeBorder p-4 rounded-2xl flex items-center justify-between shadow-lg">
+                <div>
+                    <span class="text-gray-400 text-xs font-semibold block">Pending Deposits</span>
+                    <span id="pendingDepCount" class="text-2xl font-bold text-emerald-400">0</span>
+                </div>
+                <div class="p-3 bg-emerald-500/20 text-emerald-400 rounded-xl"><i class="fas fa-arrow-down text-xl"></i></div>
+            </div>
+            <div class="bg-tradePanel border border-tradeBorder p-4 rounded-2xl flex items-center justify-between shadow-lg">
+                <div>
+                    <span class="text-gray-400 text-xs font-semibold block">Pending Withdrawals</span>
+                    <span id="pendingWitCount" class="text-2xl font-bold text-rose-400">0</span>
+                </div>
+                <div class="p-3 bg-rose-500/20 text-rose-400 rounded-xl"><i class="fas fa-arrow-up text-xl"></i></div>
+            </div>
+        </div>
+
+        <!-- Global All Users Trade Control -->
+        <div class="bg-tradePanel border border-tradeBorder rounded-2xl p-4 sm:p-6 space-y-4 shadow-xl">
+            <div class="flex items-center justify-between border-b border-tradeBorder pb-3">
+                <h3 class="font-bold text-white text-base flex items-center gap-2">
+                    <i class="fas fa-globe text-tradeBlue"></i>
+                    Global All Users Trade Control (সবার জন্য একসাথে লাভ/লস)
+                </h3>
+                <span id="globalControlBadge" class="text-[10px] bg-tradeBlue/20 text-tradeBlue px-2 py-0.5 rounded-md font-bold uppercase">NORMAL</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <button onclick="applyGlobalTradeAction('ALL_WIN')" class="bg-tradeGreen hover:bg-emerald-600 text-black font-extrabold py-3 rounded-xl transition text-xs shadow-lg flex items-center justify-center space-x-2">
+                    <i class="fas fa-check-circle text-base"></i>
+                    <span>Force ALL USERS WIN</span>
+                </button>
+                <button onclick="applyGlobalTradeAction('ALL_LOSS')" class="bg-tradeRed hover:bg-rose-700 text-white font-extrabold py-3 rounded-xl transition text-xs shadow-lg flex items-center justify-center space-x-2">
+                    <i class="fas fa-times-circle text-base"></i>
+                    <span>Force ALL USERS LOSS</span>
+                </button>
+                <button onclick="applyGlobalTradeAction('NORMAL')" class="bg-tradeCard hover:bg-tradeBorder text-gray-300 font-extrabold py-3 rounded-xl transition text-xs border border-tradeBorder flex items-center justify-center space-x-2">
+                    <i class="fas fa-rotate text-base"></i>
+                    <span>Reset Market (Normal)</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Active Users Buy / Sell Trade Monitor & Win/Loss Control -->
+        <div class="bg-tradePanel border border-tradeBorder rounded-2xl p-4 sm:p-6 space-y-4 shadow-xl">
+            <div class="flex items-center justify-between border-b border-tradeBorder pb-3">
+                <h3 class="font-bold text-white text-base flex items-center gap-2">
+                    <i class="fas fa-chart-line text-amber-400"></i>
+                    Live User Trades Monitor & Direct Win/Loss Control (ইউজার বাই/সেল মনিটর)
+                </h3>
+                <span class="text-[10px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-md font-bold uppercase">Live Tracking</span>
+            </div>
+            <p class="text-xs text-gray-400">কোন ইউজার কত ডলার দিয়ে Buy বা Sell করেছে তা নিচে দেখতে পাবেন এবং সরাসরি Win বা Loss করিয়ে দিতে পারবেন।</p>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs text-gray-300">
+                    <thead class="bg-tradeDark text-gray-400 uppercase text-[10px]">
+                        <tr>
+                            <th class="p-3">User Email</th>
+                            <th class="p-3">Asset</th>
+                            <th class="p-3">Type (Buy/Sell)</th>
+                            <th class="p-3">Amount ($)</th>
+                            <th class="p-3">Entry Price</th>
+                            <th class="p-3 text-right">Instant Win / Loss Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="liveTradesTableBody" class="divide-y divide-tradeBorder">
+                        <tr><td colspan="6" class="text-center py-4 text-gray-500 italic">কোন চলমান ট্রেড নেই</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Single User Control & Registered Users List -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-tradePanel border border-tradeBorder rounded-2xl p-4 space-y-3 shadow-xl">
+                <h3 class="font-bold text-white text-sm flex items-center gap-2 border-b border-tradeBorder pb-2">
+                    <i class="fas fa-user-gear text-rose-500"></i> Single User Control (Account Block/Unblock & Balance)
+                </h3>
+                <div class="space-y-2 text-xs">
+                    <div>
+                        <label class="block text-gray-400 font-semibold mb-1">User Email</label>
+                        <input type="text" id="targetUserEmail" placeholder="user@gmail.com" class="w-full bg-tradeDark border border-tradeBorder rounded-xl p-2.5 text-white font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-gray-400 font-semibold mb-1">Action Mode</label>
+                        <select id="userActionMode" class="w-full bg-tradeDark border border-tradeBorder rounded-xl p-2.5 text-white font-bold">
+                            <option value="BLOCK">Block User Account</option>
+                            <option value="UNBLOCK">Unblock User Account</option>
+                        </select>
+                    </div>
+                    <button id="applyUserActionBtn" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-extrabold py-2.5 rounded-xl transition text-xs shadow">
+                        Apply Action
+                    </button>
+                </div>
+            </div>
+
+            <!-- Registered Users List Box -->
+            <div class="bg-tradePanel border border-tradeBorder rounded-2xl p-4 space-y-3 shadow-xl flex flex-col">
+                <h3 class="font-bold text-white text-sm flex items-center gap-2 border-b border-tradeBorder pb-2">
+                    <i class="fas fa-list text-tradeBlue"></i> All Registered Users List
+                </h3>
+                <div class="flex-1 overflow-y-auto max-h-56 space-y-1.5 text-xs" id="registeredUsersListBox">
+                    <div class="text-gray-500 italic text-center py-4">কোন ইউজার নেই</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Full Payment Gateways Numbers Management -->
+        <div class="bg-tradePanel border border-tradeBorder rounded-2xl p-4 sm:p-6 space-y-4 shadow-xl">
+            <div class="flex items-center justify-between border-b border-tradeBorder pb-3">
+                <h3 class="font-bold text-white text-base flex items-center gap-2">
+                    <i class="fas fa-mobile-screen-button text-amber-400"></i>
+                    Full Payment Gateway Numbers Setup
+                </h3>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+                <div>
+                    <label class="block text-gray-400 font-semibold mb-1">bKash Personal / Merchant</label>
+                    <input type="text" id="fullBkash" placeholder="017xxxxxxxx" class="w-full bg-tradeDark border border-tradeBorder rounded-xl p-2.5 text-white font-mono">
+                </div>
+                <div>
+                    <label class="block text-gray-400 font-semibold mb-1">Nagad Personal / Merchant</label>
+                    <input type="text" id="fullNagad" placeholder="018xxxxxxxx" class="w-full bg-tradeDark border border-tradeBorder rounded-xl p-2.5 text-white font-mono">
+                </div>
+                <div>
+                    <label class="block text-gray-400 font-semibold mb-1">Rocket Number</label>
+                    <input type="text" id="fullRocket" placeholder="019xxxxxxxx" class="w-full bg-tradeDark border border-tradeBorder rounded-xl p-2.5 text-white font-mono">
+                </div>
+                <div>
+                    <label class="block text-gray-400 font-semibold mb-1">Binance Pay ID</label>
+                    <input type="text" id="fullBinance" placeholder="Binance ID / Email" class="w-full bg-tradeDark border border-tradeBorder rounded-xl p-2.5 text-white font-mono">
+                </div>
+                <div>
+                    <label class="block text-gray-400 font-semibold mb-1">Payeer Account No</label>
+                    <input type="text" id="fullPayeer" placeholder="P10xxxxxxx" class="w-full bg-tradeDark border border-tradeBorder rounded-xl p-2.5 text-white font-mono">
+                </div>
+                <div class="flex items-end">
+                    <button id="saveGatewaysBtn" class="w-full bg-amber-500 hover:bg-amber-600 text-black font-extrabold py-2.5 rounded-xl transition text-xs">
+                        Save Gateways
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Minimum Deposit & Withdrawal Limit Control -->
+        <div class="bg-tradePanel border border-tradeBorder rounded-2xl p-4 sm:p-6 space-y-4 shadow-xl">
+            <div class="flex items-center justify-between border-b border-tradeBorder pb-3">
+                <h3 class="font-bold text-white text-base flex items-center gap-2">
+                    <i class="fas fa-sliders text-emerald-400"></i>
+                    Minimum Deposit & Withdrawal Limits Control
+                </h3>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                <div>
+                    <label class="block text-gray-400 font-semibold mb-1">Minimum Deposit Amount ($)</label>
+                    <input type="number" id="minDepInput" value="10" class="w-full bg-tradeDark border border-tradeBorder rounded-xl p-3 text-white font-mono">
+                </div>
+                <div>
+                    <label class="block text-gray-400 font-semibold mb-1">Minimum Withdrawal Amount ($)</label>
+                    <input type="number" id="minWitInput" value="10" class="w-full bg-tradeDark border border-tradeBorder rounded-xl p-3 text-white font-mono">
+                </div>
+            </div>
+            <button id="saveLimitsBtn" class="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold py-2.5 rounded-xl transition text-xs">
+                Save Limits
+            </button>
+        </div>
+
+        <!-- Deposit Requests Table -->
+        <div class="bg-tradePanel border border-tradeBorder rounded-2xl p-4 sm:p-6 space-y-4 shadow-xl">
+            <div class="flex items-center justify-between border-b border-tradeBorder pb-3">
+                <h3 class="font-bold text-white text-base flex items-center gap-2">
+                    <i class="fas fa-arrow-down text-emerald-400"></i>
+                    Deposit Requests
+                </h3>
+                <button onclick="clearHistory('DEPOSIT')" class="bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-white px-3 py-1 rounded-lg text-xs font-bold transition">
+                    <i class="fas fa-trash-alt mr-1"></i> Clear Deposit History
+                </button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs text-gray-300">
+                    <thead class="bg-tradeDark text-gray-400 uppercase text-[10px]">
+                        <tr>
+                            <th class="p-3">User Email</th>
+                            <th class="p-3">Gateway</th>
+                            <th class="p-3">Amount</th>
+                            <th class="p-3">TrxID</th>
+                            <th class="p-3">Status</th>
+                            <th class="p-3 text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="depositTableBody" class="divide-y divide-tradeBorder"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Withdrawal Requests Table -->
+        <div class="bg-tradePanel border border-tradeBorder rounded-2xl p-4 sm:p-6 space-y-4 shadow-xl">
+            <div class="flex items-center justify-between border-b border-tradeBorder pb-3">
+                <h3 class="font-bold text-white text-base flex items-center gap-2">
+                    <i class="fas fa-arrow-up text-tradeBlue"></i>
+                    Withdrawal Requests
+                </h3>
+                <button onclick="clearHistory('WITHDRAW')" class="bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-white px-3 py-1 rounded-lg text-xs font-bold transition">
+                    <i class="fas fa-trash-alt mr-1"></i> Clear Withdraw History
+                </button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs text-gray-300">
+                    <thead class="bg-tradeDark text-gray-400 uppercase text-[10px]">
+                        <tr>
+                            <th class="p-3">User Email</th>
+                            <th class="p-3">Gateway</th>
+                            <th class="p-3">Amount</th>
+                            <th class="p-3">Account No</th>
+                            <th class="p-3">Status</th>
+                            <th class="p-3 text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="withdrawTableBody" class="divide-y divide-tradeBorder"></tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAKR8qHuQxuukFystQJ0PLWfRYw75T3glg",
+            authDomain: "quotex-trading-23833.firebaseapp.com",
+            databaseURL: "https://quotex-trading-23833-default-rtdb.firebaseio.com",
+            projectId: "quotex-trading-23833",
+            storageBucket: "quotex-trading-23833.firebasestorage.app",
+            messagingSenderId: "129987180525",
+            appId: "1:129987180525:web:c1395a24fb25ddd8b719e4",
+            measurementId: "G-PSP5289MSL"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        const MASTER_PASS = "Admin#2026@Pass";
+
+        if (localStorage.getItem('quotex_admin_auth') === 'true') {
+            document.getElementById('adminAuthModal').classList.add('hidden');
+            initFirebaseListeners();
+        }
+
+        document.getElementById('adminLoginBtn').addEventListener('click', () => {
+            const pass = document.getElementById('adminPassInput').value;
+            if (pass === MASTER_PASS) {
+                localStorage.setItem('quotex_admin_auth', 'true');
+                document.getElementById('adminAuthModal').classList.add('hidden');
+                initFirebaseListeners();
+            } else {
+                alert('ভুল পাসওয়ার্ড! সঠিক পাসওয়ার্ড দিন।');
+            }
+        });
+
+        document.getElementById('adminLogoutBtn').addEventListener('click', () => {
+            localStorage.removeItem('quotex_admin_auth');
+            document.getElementById('adminAuthModal').classList.remove('hidden');
+        });
+
+        // Initialize Live Firebase Syncing
+        function initFirebaseListeners() {
+            
+            // 1. Load Gateway Numbers
+            db.ref('gateway_numbers').on('value', snap => {
+                const gw = snap.val() || {};
+                document.getElementById('fullBkash').value = gw.bKash || '';
+                document.getElementById('fullNagad').value = gw.Nagad || '';
+                document.getElementById('fullRocket').value = gw.Rocket || '';
+                document.getElementById('fullBinance').value = gw.Binance || '';
+                document.getElementById('fullPayeer').value = gw.Payeer || '';
+            });
+
+            // 2. Load Financial Limits
+            db.ref('min_deposit').on('value', snap => {
+                document.getElementById('minDepInput').value = snap.val() || '10';
+            });
+            db.ref('min_withdraw').on('value', snap => {
+                document.getElementById('minWitInput').value = snap.val() || '10';
+            });
+
+            // 3. Global Control Status
+            db.ref('global_trade_control').on('value', snap => {
+                const mode = snap.val() || 'NORMAL';
+                const badge = document.getElementById('globalControlBadge');
+                badge.textContent = mode;
+                if (mode === 'ALL_WIN') badge.className = 'text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-md font-bold uppercase';
+                else if (mode === 'ALL_LOSS') badge.className = 'text-[10px] bg-rose-500/20 text-rose-400 px-2 py-0.5 rounded-md font-bold uppercase';
+                else badge.className = 'text-[10px] bg-tradeBlue/20 text-tradeBlue px-2 py-0.5 rounded-md font-bold uppercase';
+            });
+
+            // 4. Render Registered Users & Balances
+            db.ref('registered_users').on('value', regSnap => {
+                const users = regSnap.val() || {};
+                document.getElementById('totalUsersCount').textContent = Object.keys(users).length;
+
+                db.ref('users').on('value', userSnap => {
+                    const usersData = userSnap.val() || {};
+                    const userListBox = document.getElementById('registeredUsersListBox');
+                    const userKeys = Object.keys(users);
+
+                    if (userKeys.length === 0) {
+                        userListBox.innerHTML = `<div class="text-gray-500 italic text-center py-4">কোন ইউজার নেই</div>`;
+                    } else {
+                        let html = '';
+                        userKeys.forEach(safeKey => {
+                            const u = users[safeKey];
+                            const email = safeKey.replace(/_/g, ".");
+                            const liveBal = usersData[safeKey]?.liveBalance !== undefined ? parseFloat(usersData[safeKey].liveBalance) : 0.00;
+                            
+                            html += `
+                                <div class="bg-tradeDark p-2.5 rounded-xl border border-tradeBorder flex items-center justify-between">
+                                    <div>
+                                        <span class="font-bold text-white block">${u.name || 'Trader'}</span>
+                                        <span class="text-[10px] text-gray-400 font-mono">${email}</span>
+                                    </div>
+                                    <div class="flex items-center space-x-2">
+                                        <div class="text-right mr-1">
+                                            <span class="text-emerald-400 font-mono font-bold block">$${liveBal.toFixed(2)}</span>
+                                            <span class="text-[8px] text-gray-500 uppercase">Balance</span>
+                                        </div>
+                                        <input type="number" id="balInput_${safeKey}" placeholder="$" class="w-14 bg-tradePanel border border-tradeBorder rounded-lg p-1 text-xs text-white font-mono">
+                                        <button onclick="modifyBalance('${safeKey}', 'add')" class="bg-emerald-500/20 hover:bg-emerald-500 text-emerald-400 hover:text-black font-bold px-2 py-1 rounded-lg border border-emerald-500/30 text-xs">+</button>
+                                        <button onclick="modifyBalance('${safeKey}', 'sub')" class="bg-rose-500/20 hover:bg-rose-500 text-rose-400 hover:text-white font-bold px-2 py-1 rounded-lg border border-rose-500/30 text-xs">-</button>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        userListBox.innerHTML = html;
+                    }
+                });
+            });
+
+            // 5. Render Active Trades Monitor
+            db.ref('active_trades_monitor').on('value', snap => {
+                const allMonitored = snap.val() || {};
+                const liveTbody = document.getElementById('liveTradesTableBody');
+                let liveHtml = '';
+                let totalActive = 0;
+
+                Object.entries(allMonitored).forEach(([safeKey, tradesList]) => {
+                    if (Array.isArray(tradesList)) {
+                        tradesList.forEach(lt => {
+                            totalActive++;
+                            const isBuy = lt.type === 'BUY';
+                            const email = lt.user || safeKey.replace(/_/g, ".");
+                            liveHtml += `
+                                <tr class="hover:bg-tradeDark/40">
+                                    <td class="p-3 font-semibold text-white">${email}</td>
+                                    <td class="p-3 font-bold">${lt.assetName}</td>
+                                    <td class="p-3 font-bold ${isBuy ? 'text-emerald-400' : 'text-rose-500'}">${lt.type}</td>
+                                    <td class="p-3 font-mono font-bold text-amber-400">$${lt.amount}</td>
+                                    <td class="p-3 font-mono text-gray-400">${lt.entryPrice ? lt.entryPrice.toFixed(3) : '0.00'}</td>
+                                    <td class="p-3 text-right space-x-1">
+                                        <button onclick="forceTradeAction('${email}', 'WIN')" class="bg-emerald-500 hover:bg-emerald-600 text-black font-bold px-2.5 py-1 rounded text-[10px]">Win</button>
+                                        <button onclick="forceTradeAction('${email}', 'LOSS')" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-2.5 py-1 rounded text-[10px]">Loss</button>
+                                    </td>
+                                </tr>
+                            `;
+                        });
+                    }
+                });
+
+                if (totalActive === 0) {
+                    liveTbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-gray-500 italic">কোন চলমান ট্রেড নেই</td></tr>`;
+                } else {
+                    liveTbody.innerHTML = liveHtml;
+                }
+            });
+
+            // 6. Render Deposit & Withdrawal Requests Tables
+            db.ref('transactions').on('value', snap => {
+                const txs = snap.val() || {};
+                const depTbody = document.getElementById('depositTableBody');
+                const witTbody = document.getElementById('withdrawTableBody');
+
+                let pDep = 0, pWit = 0;
+                let depHtml = '', witHtml = '';
+
+                Object.entries(txs).forEach(([txId, tx]) => {
+                    const isDep = tx.type === 'DEPOSIT';
+                    if (tx.status === 'PENDING') {
+                        if (isDep) pDep++; else pWit++;
+                    }
+
+                    const statusBadge = tx.status === 'APPROVED' ? 
+                        `<span class="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded font-bold text-[10px]">APPROVED</span>` : 
+                        (tx.status === 'REJECTED' ? `<span class="bg-rose-500/10 text-rose-400 px-2 py-0.5 rounded font-bold text-[10px]">REJECTED</span>` : 
+                        `<span class="bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded font-bold text-[10px]">PENDING</span>`);
+
+                    const actionBtns = (tx.status === 'PENDING') ? `
+                        <button onclick="updateTx('${txId}', '${tx.user}', '${tx.type}', ${tx.amount}, 'APPROVED')" class="bg-emerald-500 hover:bg-emerald-600 text-black font-bold px-2 py-0.5 rounded text-xs">Approve</button>
+                        <button onclick="updateTx('${txId}', '${tx.user}', '${tx.type}', ${tx.amount}, 'REJECTED')" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-2 py-0.5 rounded text-xs">Reject</button>
+                    ` : `<span class="text-gray-500 italic text-[10px]">Completed</span>`;
+
+                    if (isDep) {
+                        depHtml += `
+                            <tr class="hover:bg-tradeDark/40">
+                                <td class="p-3 font-semibold text-white">${tx.user}</td>
+                                <td class="p-3">${tx.gateway}</td>
+                                <td class="p-3 font-mono font-bold text-emerald-400">$${parseFloat(tx.amount).toFixed(2)}</td>
+                                <td class="p-3 font-mono text-gray-400">${tx.trxId || 'N/A'}</td>
+                                <td class="p-3">${statusBadge}</td>
+                                <td class="p-3 text-right space-x-1">${actionBtns}</td>
+                            </tr>
+                        `;
+                    } else {
+                        witHtml += `
+                            <tr class="hover:bg-tradeDark/40">
+                                <td class="p-3 font-semibold text-white">${tx.user}</td>
+                                <td class="p-3">${tx.gateway}</td>
+                                <td class="p-3 font-mono font-bold text-tradeBlue">$${parseFloat(tx.amount).toFixed(2)}</td>
+                                <td class="p-3 font-mono text-gray-400">${tx.accountNo || 'N/A'}</td>
+                                <td class="p-3">${statusBadge}</td>
+                                <td class="p-3 text-right space-x-1">${actionBtns}</td>
+                            </tr>
+                        `;
+                    }
+                });
+
+                depTbody.innerHTML = depHtml || `<tr><td colspan="6" class="text-center py-4 text-gray-500 italic">কোন ডিপোজিট রিকোয়েস্ট নেই</td></tr>`;
+                witTbody.innerHTML = witHtml || `<tr><td colspan="6" class="text-center py-4 text-gray-500 italic">কোন উইথড্র রিকোয়েস্ট নেই</td></tr>`;
+                
+                document.getElementById('pendingDepCount').textContent = pDep;
+                document.getElementById('pendingWitCount').textContent = pWit;
+            });
+        }
+
+        // Save Payment Gateways to Firebase
+        document.getElementById('saveGatewaysBtn').addEventListener('click', () => {
+            const gwData = {
+                bKash: document.getElementById('fullBkash').value,
+                Nagad: document.getElementById('fullNagad').value,
+                Rocket: document.getElementById('fullRocket').value,
+                Binance: document.getElementById('fullBinance').value,
+                Payeer: document.getElementById('fullPayeer').value
+            };
+            db.ref('gateway_numbers').set(gwData);
+            alert('সব পেমেন্ট গেটওয়ে নম্বর সফলভাবে আপডেট করা হয়েছে!');
+        });
+
+        // Save Financial Limits to Firebase
+        document.getElementById('saveLimitsBtn').addEventListener('click', () => {
+            db.ref('min_deposit').set(document.getElementById('minDepInput').value);
+            db.ref('min_withdraw').set(document.getElementById('minWitInput').value);
+            alert('ডিপোজিট ও উইথড্র লিমিট সফলভাবে সেভ করা হয়েছে!');
+        });
+
+        // Apply Master Global Control
+        function applyGlobalTradeAction(actionType) {
+            db.ref('global_trade_control').set(actionType);
+            alert(`সফলভাবে সেট করা হয়েছে! প্ল্যাটফর্মের সকল ইউজারের ট্রেড এখন [${actionType}]।`);
+        }
+
+        // Single User Account Block/Unblock Action
+        document.getElementById('applyUserActionBtn').addEventListener('click', () => {
+            const email = document.getElementById('targetUserEmail').value.trim().toLowerCase();
+            const action = document.getElementById('userActionMode').value;
+            if (!email) { alert('দয়া করে ইউজারের ইমেইল লিখুন!'); return; }
+
+            const safeKey = email.replace(/[.#$\/\[\]]/g, "_");
+            db.ref('users/' + safeKey + '/isBlocked').set(action === 'BLOCK');
+            alert(`ইউজার [${email}] সফলভাবে ${action === 'BLOCK' ? 'ব্লক' : 'আনব্লক'} করা হয়েছে!`);
+        });
+
+        // Direct Balance Add / Subtract Action
+        window.modifyBalance = function(safeKey, action) {
+            const amtInput = document.getElementById(`balInput_${safeKey}`);
+            const val = parseFloat(amtInput.value);
+            if (isNaN(val) || val <= 0) {
+                alert("সঠিক অ্যামাউন্ট দিন!");
+                return;
+            }
+            db.ref('users/' + safeKey + '/liveBalance').once('value', snap => {
+                let current = snap.val() !== null ? snap.val() : 0;
+                if (action === 'add') current += val;
+                else current = Math.max(0, current - val);
+
+                db.ref('users/' + safeKey + '/liveBalance').set(current);
+                alert(`User balance updated successfully!`);
+                amtInput.value = '';
+            });
+        };
+
+        // Force Single Trade Win/Loss
+        function forceTradeAction(userEmail, action) {
+            const safeKey = userEmail.replace(/[.#$\/\[\]]/g, "_");
+            db.ref('forced_trades/' + safeKey).set(action);
+            alert(`ইউজার [${userEmail}] এর ট্রেড সফলভাবে [${action}] হিসেবে সেট করা হয়েছে!`);
+        }
+
+        // Approve / Reject Transactions
+        function updateTx(txId, userEmail, type, amount, status) {
+            db.ref('transactions/' + txId + '/status').set(status);
+            
+            if (status === 'APPROVED' && type === 'DEPOSIT') {
+                const safeKey = userEmail.replace(/[.#$\/\[\]]/g, "_");
+                db.ref('users/' + safeKey + '/liveBalance').once('value', snap => {
+                    let liveBal = snap.val() !== null ? parseFloat(snap.val()) : 0.00;
+                    liveBal += parseFloat(amount);
+                    db.ref('users/' + safeKey + '/liveBalance').set(liveBal);
+                });
+            }
+            alert(`ট্রেড রিকোয়েস্ট সফলভাবে ${status === 'APPROVED' ? 'অনুমোদন' : 'বাতিল'} করা হয়েছে!`);
+        }
+
+        // Clear Deposit or Withdraw History
+        function clearHistory(type) {
+            if (!confirm(`আপনি কি নিশ্চিতভাবে সব ${type === 'DEPOSIT' ? 'ডিপোজিট' : 'উইথড্র'} হিস্টোরি ডিলিট করতে চান?`)) return;
+            
+            db.ref('transactions').once('value', snap => {
+                const txs = snap.val() || {};
+                Object.entries(txs).forEach(([id, tx]) => {
+                    if (tx.type === type) {
+                        db.ref('transactions/' + id).remove();
+                    }
+                });
+                alert('হিস্টোরি সফলভাবে ক্লিয়ার করা হয়েছে!');
+            });
+        }
+    </script>
+</body>
+</html>

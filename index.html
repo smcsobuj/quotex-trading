@@ -1,0 +1,1353 @@
+<!DOCTYPE html>
+<html lang="bn" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Quotex Binary Options Trading Platform</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        tradeDark: '#0b0e14',
+                        tradePanel: '#151a24',
+                        tradeCard: '#1d2331',
+                        tradeBorder: '#273043',
+                        tradeGreen: '#00c853',
+                        tradeGreenHover: '#00e676',
+                        tradeRed: '#ff3d00',
+                        tradeRedHover: '#ff5252',
+                        tradeBlue: '#2962ff',
+                        tradeGold: '#ffd700'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; user-select: none; overflow: hidden; touch-action: manipulation; width: 100vw; height: 100vh; height: 100dvh; position: fixed; top: 0; left: 0; }
+        ::-webkit-scrollbar { width: 3px; height: 3px; }
+        ::-webkit-scrollbar-track { background: #151a24; }
+        ::-webkit-scrollbar-thumb { background: #273043; border-radius: 3px; }
+        .pulse-win { box-shadow: 0 0 12px rgba(0, 230, 118, 0.6); }
+        .pulse-loss { box-shadow: 0 0 12px rgba(255, 82, 82, 0.6); }
+        .modal-blur { backdrop-filter: blur(6px); }
+    </style>
+</head>
+<body class="bg-tradeDark text-gray-200 flex flex-col justify-between select-none">
+
+    <!-- Auth Overlay Modal -->
+    <div id="authModal" class="fixed inset-0 bg-black/95 modal-blur z-50 flex items-center justify-center p-4">
+        <div class="bg-tradePanel border border-tradeBorder rounded-2xl w-full max-w-sm p-5 shadow-2xl flex flex-col space-y-3">
+            <div class="text-center">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-tradeBlue to-cyan-400 flex items-center justify-center font-black text-white text-xl mx-auto shadow-lg mb-1">Q</div>
+                <h2 id="authTitle" class="text-lg font-bold text-white">Welcome to Quotex</h2>
+                <p id="authSubtitle" class="text-[11px] text-gray-400">Secure Gmail & OTP Authentication</p>
+            </div>
+
+            <div class="flex bg-tradeDark p-1 rounded-xl border border-tradeBorder">
+                <button id="tabLogin" class="flex-1 py-1.5 rounded-lg text-xs font-bold bg-tradeBlue text-white transition">Login</button>
+                <button id="tabSignup" class="flex-1 py-1.5 rounded-lg text-xs font-bold text-gray-400 transition">Sign Up</button>
+            </div>
+
+            <div class="space-y-2.5">
+                <div id="nameFieldContainer" class="hidden">
+                    <label class="block text-[10px] font-semibold text-gray-400 mb-0.5">Full Name</label>
+                    <input type="text" id="authName" placeholder="Enter your name" class="w-full bg-tradeDark border border-tradeBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-tradeBlue">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-semibold text-gray-400 mb-0.5">Gmail / Email</label>
+                    <input type="email" id="authEmail" placeholder="name@gmail.com" class="w-full bg-tradeDark border border-tradeBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-tradeBlue">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-semibold text-gray-400 mb-0.5">Password</label>
+                    <input type="password" id="authPassword" placeholder="••••••••" class="w-full bg-tradeDark border border-tradeBorder rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-tradeBlue">
+                </div>
+                
+                <!-- OTP Field -->
+                <div id="otpFieldContainer" class="hidden space-y-1">
+                    <div class="flex justify-between items-center text-[10px]">
+                        <span class="text-emerald-400 font-semibold">Enter OTP Code</span>
+                        <span id="displayOtpHint" class="text-amber-400 font-mono font-bold bg-amber-500/10 px-2 py-0.5 rounded">OTP: 1234</span>
+                    </div>
+                    <input type="text" id="authOtp" placeholder="Enter 4-digit OTP" class="w-full bg-tradeDark border border-emerald-500/50 rounded-xl p-2.5 text-xs text-white font-mono text-center tracking-widest focus:outline-none">
+                </div>
+
+                <button id="authSubmitBtn" class="w-full bg-tradeBlue hover:bg-blue-600 text-white font-extrabold py-2.5 rounded-xl shadow-lg transition text-xs">Login to Account</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Navigation Header -->
+    <header class="h-11 bg-tradePanel border-b border-tradeBorder flex items-center justify-between px-3 z-30 flex-shrink-0">
+        <div class="flex items-center space-x-2">
+            <div class="flex items-center space-x-1.5 cursor-pointer">
+                <div class="w-6 h-6 rounded-lg bg-gradient-to-tr from-tradeBlue to-cyan-400 flex items-center justify-center font-black text-white text-xs shadow">Q</div>
+                <span class="font-extrabold text-xs tracking-wider text-white">QUOTEX<span class="text-tradeBlue">PRO</span></span>
+            </div>
+
+            <!-- Account Switcher Dropdown -->
+            <div class="relative">
+                <button id="accountSelectBtn" class="bg-tradeCard border border-tradeBorder rounded-lg px-2 py-1 flex items-center space-x-1.5 text-xs">
+                    <span id="accountBadge" class="w-2 h-2 rounded-full bg-amber-500"></span>
+                    <div class="text-left">
+                        <span id="accountTypeDisplay" class="text-[8px] text-gray-400 block -mb-1 font-semibold uppercase">DEMO</span>
+                        <span id="balanceDisplay" class="font-bold text-white text-xs">$10,000</span>
+                    </div>
+                    <i class="fas fa-chevron-down text-[9px] text-gray-400"></i>
+                </button>
+
+                <!-- Account Dropdown Menu -->
+                <div id="accountDropdown" class="hidden absolute left-0 mt-2 w-52 bg-tradeCard border border-tradeBorder rounded-xl shadow-2xl p-2 z-50 text-xs">
+                    <div class="text-gray-400 font-semibold px-2 py-1 uppercase text-[10px]">Select Account</div>
+                    
+                    <div id="selectDemoAcc" class="p-2 rounded-lg hover:bg-tradePanel cursor-pointer flex items-center justify-between transition">
+                        <div>
+                            <div class="flex items-center space-x-1.5">
+                                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                                <span class="font-bold text-white text-xs">Demo Account</span>
+                            </div>
+                            <span id="demoValDisplay" class="text-gray-400 text-[10px] pl-3.5 block">$10,000.00</span>
+                        </div>
+                        <button id="refillDemoBtn" class="p-1.5 bg-tradePanel rounded text-amber-400 hover:text-white">
+                            <i class="fas fa-redo-alt text-xs"></i>
+                        </button>
+                    </div>
+
+                    <div id="selectLiveAcc" class="p-2 rounded-lg hover:bg-tradePanel cursor-pointer flex items-center justify-between transition mt-1">
+                        <div>
+                            <div class="flex items-center space-x-1.5">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                <span class="font-bold text-white text-xs">Live Account</span>
+                            </div>
+                            <span id="liveValDisplay" class="text-gray-400 text-[10px] pl-3.5 block">$0.00</span>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-tradeBorder my-1 pt-1">
+                        <button id="logoutBtn" class="w-full text-left p-2 rounded hover:bg-rose-500/20 text-rose-400 font-bold flex items-center space-x-2">
+                            <i class="fas fa-sign-out-alt text-xs"></i>
+                            <span>Logout</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Section: Deposit & Withdraw Buttons -->
+        <div class="flex items-center space-x-2">
+            <button id="depositBtn" class="bg-tradeGreen hover:bg-tradeGreenHover text-black font-extrabold px-2.5 py-1 rounded-md text-xs flex items-center space-x-1 shadow">
+                <i class="fas fa-wallet text-xs"></i>
+                <span>Deposit</span>
+            </button>
+            <button id="withdrawBtn" class="bg-tradeCard text-gray-200 font-bold px-2.5 py-1 rounded-md text-xs border border-tradeBorder">
+                Withdraw
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Workspace Area -->
+    <div class="flex-1 flex overflow-hidden relative">
+
+        <!-- Sidebar Tools -->
+        <div class="w-10 bg-tradePanel border-r border-tradeBorder flex flex-col items-center py-2.5 space-y-3 text-gray-400 z-20 flex-shrink-0">
+            <button title="Assets" id="openAssetModalBtn" class="p-2 text-tradeBlue bg-tradeDark rounded-lg hover:text-white text-xs shadow">
+                <i class="fas fa-globe"></i>
+            </button>
+            <button title="Candle Timeframe" id="openTimeframeModalBtn" class="p-2 hover:text-white rounded-lg hover:bg-tradeDark text-xs">
+                <i class="fas fa-chart-candlestick"></i>
+            </button>
+            <button title="Indicators & Lines" id="openIndicatorsModalBtn" class="p-2 hover:text-white rounded-lg hover:bg-tradeDark text-xs">
+                <i class="fas fa-sliders text-amber-400"></i>
+            </button>
+            <button title="Trade History" id="toggleHistoryBtn" class="p-2 hover:text-white rounded-lg hover:bg-tradeDark relative text-xs">
+                <i class="fas fa-history"></i>
+                <span id="historyBadge" class="hidden absolute top-1 right-1 w-2 h-2 bg-tradeGreen rounded-full"></span>
+            </button>
+            <div class="flex-1"></div>
+            <button id="soundToggleBtn" title="Sound" class="p-2 text-emerald-400 hover:text-white rounded-lg text-xs">
+                <i class="fas fa-volume-up"></i>
+            </button>
+        </div>
+
+        <!-- Center Interactive Chart Viewport -->
+        <div class="flex-1 flex flex-col relative bg-tradeDark overflow-hidden p-1.5">
+            
+            <div class="flex items-center justify-between z-30 mb-1 px-1">
+                <div class="flex items-center space-x-1.5">
+                    <button id="marketSelectBtn" class="bg-tradePanel border border-tradeBorder rounded-lg px-2 py-1 flex items-center space-x-1.5 shadow text-xs">
+                        <span id="assetPairFlag" class="text-sm">🇦🇺🇯🇵</span>
+                        <span id="assetPairName" class="font-extrabold text-white text-xs">AUD/JPY</span>
+                        <span id="assetPayoutBadge" class="bg-emerald-500/20 text-emerald-400 font-bold text-[9px] px-1.5 py-0.5 rounded">90%</span>
+                        <i class="fas fa-chevron-down text-[9px] text-gray-400"></i>
+                    </button>
+
+                    <button id="timeframeSelectBtn" class="bg-tradePanel border border-tradeBorder px-2 py-1 rounded-lg text-xs font-bold text-gray-300 flex items-center space-x-1 cursor-pointer">
+                        <i class="fas fa-clock text-tradeBlue text-[10px]"></i>
+                        <span id="currentTimeframeLabel">5s</span>
+                    </button>
+                </div>
+
+                <div class="bg-tradePanel border border-tradeBorder px-2 py-1 rounded-lg text-right font-mono">
+                    <span class="text-gray-400 block text-[7px]">LIVE PRICE</span>
+                    <span id="livePriceHeader" class="font-bold text-tradeGreen text-xs">111.014</span>
+                </div>
+            </div>
+
+            <!-- Canvas Container Box -->
+            <div id="chartContainer" class="flex-1 w-full relative border border-tradeBorder rounded-xl bg-tradeDark overflow-hidden cursor-crosshair shadow-inner">
+                <canvas id="tradingCanvas" class="w-full h-full block"></canvas>
+            </div>
+
+            <!-- Bottom Trade Control Panel -->
+            <div class="bg-tradePanel border border-tradeBorder rounded-xl p-2 z-30 shadow-2xl flex-shrink-0 mt-1.5">
+                <div class="max-w-4xl mx-auto flex items-center justify-between gap-2">
+                    
+                    <div class="flex items-center gap-1.5">
+                        <div class="w-24 bg-tradeDark border border-tradeBorder rounded-lg p-1 flex items-center justify-between">
+                            <button id="timeMinus" class="w-6 h-6 rounded bg-tradePanel flex items-center justify-center text-gray-300 font-bold text-xs">-</button>
+                            <div class="text-center px-0.5">
+                                <span id="timeValDisplay" class="font-mono font-bold text-white text-xs block leading-none">00:30</span>
+                                <span class="text-[7px] text-gray-400 uppercase">Timer</span>
+                            </div>
+                            <button id="timePlus" class="w-6 h-6 rounded bg-tradePanel flex items-center justify-center text-gray-300 font-bold text-xs">+</button>
+                        </div>
+
+                        <div class="w-24 bg-tradeDark border border-tradeBorder rounded-lg p-1 flex items-center justify-between">
+                            <button id="investMinus" class="w-6 h-6 rounded bg-tradePanel flex items-center justify-center text-gray-300 font-bold text-xs">-</button>
+                            <div class="text-center px-0.5">
+                                <span id="investValDisplay" class="font-mono font-bold text-white text-xs block leading-none">$1</span>
+                                <span class="text-[7px] text-gray-400 uppercase">Invest</span>
+                            </div>
+                            <button id="investPlus" class="w-6 h-6 rounded bg-tradePanel flex items-center justify-center text-gray-300 font-bold text-xs">+</button>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-1.5 flex-1">
+                        <button id="buyBtn" class="flex-1 bg-tradeGreen active:scale-95 text-black font-extrabold py-2 px-2.5 rounded-lg flex items-center justify-between shadow">
+                            <div class="text-left leading-tight">
+                                <span class="text-xs uppercase block font-extrabold">Buy</span>
+                                <span class="text-[8px] opacity-90 font-bold">Call ▲</span>
+                            </div>
+                            <i class="fas fa-arrow-up text-xs"></i>
+                        </button>
+
+                        <button id="sellBtn" class="flex-1 bg-tradeRed active:scale-95 text-white font-extrabold py-2 px-2.5 rounded-lg flex items-center justify-between shadow">
+                            <div class="text-left leading-tight">
+                                <span class="text-xs uppercase block font-extrabold">Sell</span>
+                                <span class="text-[8px] opacity-90 font-bold">Put ▼</span>
+                            </div>
+                            <i class="fas fa-arrow-down text-xs"></i>
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide-out Trade & Transaction History Panel -->
+        <div id="historyDrawer" class="hidden absolute top-0 right-0 w-80 h-full bg-tradePanel border-l border-tradeBorder z-40 flex flex-col p-4 shadow-2xl">
+            <div class="flex items-center justify-between border-b border-tradeBorder pb-3 mb-3">
+                <div class="flex space-x-3">
+                    <button id="tabTrades" class="font-bold text-xs text-tradeBlue pb-1 border-b-2 border-tradeBlue">Trades</button>
+                    <button id="tabTransactions" class="font-bold text-xs text-gray-400 pb-1 border-b-2 border-transparent">History</button>
+                </div>
+                <button id="closeHistoryBtn" class="text-gray-400 hover:text-white p-1">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="drawerContentList" class="flex-1 overflow-y-auto space-y-2 text-xs"></div>
+        </div>
+    </div>
+
+    <!-- Indicators Modal -->
+    <div id="indicatorsModal" class="hidden fixed inset-0 bg-black/70 modal-blur z-50 flex items-center justify-center p-4">
+        <div class="bg-tradePanel border border-tradeBorder rounded-2xl w-full max-w-xs overflow-hidden shadow-2xl">
+            <div class="p-3 border-b border-tradeBorder flex items-center justify-between">
+                <h3 class="font-bold text-white text-xs">Chart Tools & Indicators</h3>
+                <button id="closeIndicatorsModal" class="text-gray-400 hover:text-white p-1"><i class="fas fa-times text-sm"></i></button>
+            </div>
+            <div class="p-3 space-y-2.5 text-xs">
+                <button id="toggleHLine" class="w-full p-2.5 rounded-xl bg-tradeDark text-left font-bold text-white border border-tradeBorder flex items-center justify-between">
+                    <span>Horizontal Line</span>
+                    <span id="hLineStatus" class="text-gray-500">OFF</span>
+                </button>
+                <button id="toggleMA" class="w-full p-2.5 rounded-xl bg-tradeDark text-left font-bold text-white border border-tradeBorder flex items-center justify-between">
+                    <span>Moving Average (MA)</span>
+                    <span id="maStatus" class="text-gray-500">OFF</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assets Selection Modal -->
+    <div id="assetModal" class="hidden fixed inset-0 bg-black/70 modal-blur z-50 flex items-center justify-center p-4">
+        <div class="bg-tradePanel border border-tradeBorder rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl flex flex-col max-h-[80vh]">
+            <div class="p-3 border-b border-tradeBorder flex items-center justify-between">
+                <h3 class="font-bold text-white text-xs flex items-center gap-2">
+                    <i class="fas fa-coins text-tradeGold"></i> Select Asset Market (30+ Markets)
+                </h3>
+                <button id="closeAssetModal" class="text-gray-400 hover:text-white p-1"><i class="fas fa-times text-sm"></i></button>
+            </div>
+            <div class="p-2.5 border-b border-tradeBorder bg-tradeDark">
+                <input type="text" id="assetSearchInput" placeholder="Search market..." class="w-full bg-tradePanel border border-tradeBorder rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+            </div>
+            <div id="assetListContainer" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
+        </div>
+    </div>
+
+    <!-- Candle Timeframe Modal -->
+    <div id="timeframeModal" class="hidden fixed inset-0 bg-black/70 modal-blur z-50 flex items-center justify-center p-4">
+        <div class="bg-tradePanel border border-tradeBorder rounded-2xl w-full max-w-xs overflow-hidden shadow-2xl">
+            <div class="p-3 border-b border-tradeBorder flex items-center justify-between">
+                <h3 class="font-bold text-white text-xs">Candle Timeframe</h3>
+                <button id="closeTimeframeModal" class="text-gray-400 hover:text-white p-1"><i class="fas fa-times text-sm"></i></button>
+            </div>
+            <div class="p-3 grid grid-cols-2 gap-2 text-xs" id="timeframeList">
+                <button data-tf="5s" class="tf-btn p-2.5 rounded-xl bg-tradeDark text-center font-bold text-white border border-tradeBlue text-tradeBlue">5 seconds</button>
+                <button data-tf="10s" class="tf-btn p-2.5 rounded-xl bg-tradeDark text-center font-bold text-white border border-tradeBorder">10 seconds</button>
+                <button data-tf="15s" class="tf-btn p-2.5 rounded-xl bg-tradeDark text-center font-bold text-white border border-tradeBorder">15 seconds</button>
+                <button data-tf="30s" class="tf-btn p-2.5 rounded-xl bg-tradeDark text-center font-bold text-white border border-tradeBorder">30 seconds</button>
+                <button data-tf="1m" class="tf-btn p-2.5 rounded-xl bg-tradeDark text-center font-bold text-white border border-tradeBorder">1 minute</button>
+                <button data-tf="2m" class="tf-btn p-2.5 rounded-xl bg-tradeDark text-center font-bold text-white border border-tradeBorder">2 minutes</button>
+                <button data-tf="3m" class="tf-btn p-2.5 rounded-xl bg-tradeDark text-center font-bold text-white border border-tradeBorder">3 minutes</button>
+                <button data-tf="5m" class="tf-btn p-2.5 rounded-xl bg-tradeDark text-center font-bold text-white border border-tradeBorder">5 minutes</button>
+                <button data-tf="10m" class="tf-btn p-2.5 rounded-xl bg-tradeDark text-center font-bold text-white border border-tradeBorder col-span-2">10 minutes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Deposit Modal -->
+    <div id="depositModal" class="hidden fixed inset-0 bg-black/70 modal-blur z-50 flex items-center justify-center p-4">
+        <div class="bg-tradePanel border border-tradeBorder rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl">
+            <div class="p-3 border-b border-tradeBorder flex items-center justify-between">
+                <h3 class="font-bold text-white text-xs flex items-center gap-2"><i class="fas fa-wallet text-tradeGreen"></i> Deposit Funds</h3>
+                <button id="closeDepositModal" class="text-gray-400 hover:text-white p-1"><i class="fas fa-times text-sm"></i></button>
+            </div>
+            <div class="p-4 space-y-3 text-xs">
+                <div class="bg-tradeDark p-2.5 rounded-xl border border-tradeBorder flex items-center justify-between">
+                    <div>
+                        <span class="text-gray-400 block text-[9px]">ADMIN PAYMENT NUMBER:</span>
+                        <span id="displayGatewayNumber" class="font-mono font-bold text-tradeGreen text-xs">01700000000 (bKash)</span>
+                    </div>
+                    <button id="copyGatewayBtn" class="bg-tradePanel hover:bg-tradeBorder px-2.5 py-1.5 rounded-lg text-amber-400 font-bold text-[10px] flex items-center gap-1 transition">
+                        <i class="fas fa-copy"></i> Copy
+                    </button>
+                </div>
+                <div>
+                    <label class="block text-gray-400 font-semibold mb-1">Select Payment Method</label>
+                    <div class="grid grid-cols-3 gap-1.5">
+                        <button type="button" class="gatewayBtn p-2 rounded-xl border border-tradeBlue bg-tradeBlue/25 text-white font-bold text-center text-xs" data-gw="bKash">bKash</button>
+                        <button type="button" class="gatewayBtn p-2 rounded-xl border border-tradeBorder bg-tradeDark text-gray-300 font-bold text-center text-xs" data-gw="Nagad">Nagad</button>
+                        <button type="button" class="gatewayBtn p-2 rounded-xl border border-tradeBorder bg-tradeDark text-gray-300 font-bold text-center text-xs" data-gw="Rocket">Rocket</button>
+                        <button type="button" class="gatewayBtn p-2 rounded-xl border border-tradeBorder bg-tradeDark text-gray-300 font-bold text-center text-xs" data-gw="Binance Pay">Binance</button>
+                        <button type="button" class="gatewayBtn p-2 rounded-xl border border-tradeBorder bg-tradeDark text-gray-300 font-bold text-center text-xs" data-gw="Payeer">Payeer</button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-gray-400 font-semibold mb-1">Amount ($)</label>
+                    <input type="number" id="depositAmountInput" value="50" min="10" class="w-full bg-tradeDark border border-tradeBorder rounded-xl p-2.5 text-white font-mono text-xs">
+                </div>
+                <div>
+                    <label class="block text-gray-400 font-semibold mb-1">TrxID / Account No</label>
+                    <input type="text" id="depositTrxInput" placeholder="Transaction ID or Hash" class="w-full bg-tradeDark border border-tradeBorder rounded-xl p-2.5 text-white font-mono text-xs">
+                </div>
+                <button id="confirmDepositBtn" class="w-full bg-tradeGreen text-black font-extrabold py-2.5 rounded-xl shadow transition text-xs">Submit Deposit Request</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Withdraw Modal -->
+    <div id="withdrawModal" class="hidden fixed inset-0 bg-black/70 modal-blur z-50 flex items-center justify-center p-4">
+        <div class="bg-tradePanel border border-tradeBorder rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl">
+            <div class="p-3 border-b border-tradeBorder flex items-center justify-between">
+                <h3 class="font-bold text-white text-xs"><i class="fas fa-arrow-up-from-bracket text-tradeBlue"></i> Withdraw Funds</h3>
+                <button id="closeWithdrawModal" class="text-gray-400 hover:text-white p-1"><i class="fas fa-times text-sm"></i></button>
+            </div>
+            <div class="p-4 space-y-3 text-xs">
+                <div class="bg-tradeDark p-2.5 rounded-xl border border-tradeBorder flex justify-between">
+                    <span class="text-gray-400">Available Live Balance:</span>
+                    <span id="withdrawAvailDisplay" class="font-bold text-emerald-400 font-mono">$0.00</span>
+                </div>
+                <div>
+                    <label class="block text-gray-400 font-semibold mb-1">Gateway</label>
+                    <select id="withdrawGw" class="w-full bg-tradeDark border border-tradeBorder rounded-xl p-2.5 text-white">
+                        <option value="bKash">bKash</option>
+                        <option value="Nagad">Nagad</option>
+                        <option value="Rocket">Rocket</option>
+                        <option value="Binance Pay">Binance Pay</option>
+                        <option value="Payeer">Payeer</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-400 font-semibold mb-1">Account Number / Wallet ID</label>
+                    <input type="text" id="withdrawAccountNo" placeholder="Wallet number or ID" class="w-full bg-tradeDark border border-tradeBorder rounded-xl p-2.5 text-white font-mono text-xs">
+                </div>
+                <div>
+                    <label class="block text-gray-400 font-semibold mb-1">Amount ($) <span id="minWitHint" class="text-amber-400">(Min: $10)</span></label>
+                    <input type="number" id="withdrawAmountInput" value="50" min="10" class="w-full bg-tradeDark border border-tradeBorder rounded-xl p-2.5 text-white font-mono text-xs">
+                </div>
+                <button id="confirmWithdrawBtn" class="w-full bg-tradeBlue text-white font-extrabold py-2.5 rounded-xl shadow transition text-xs">Request Withdrawal</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastContainer" class="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+    <script>
+        // Firebase Initialization
+        const firebaseConfig = {
+            apiKey: "AIzaSyAKR8qHuQxuukFystQJ0PLWfRYw75T3glg",
+            authDomain: "quotex-trading-23833.firebaseapp.com",
+            databaseURL: "https://quotex-trading-23833-default-rtdb.firebaseio.com",
+            projectId: "quotex-trading-23833",
+            storageBucket: "quotex-trading-23833.firebasestorage.app",
+            messagingSenderId: "129987180525",
+            appId: "1:129987180525:web:c1395a24fb25ddd8b719e4",
+            measurementId: "G-PSP5289MSL"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+        let soundEnabled = true;
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            try {
+                if (!audioCtx) audioCtx = new AudioCtx();
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                if (type === 'click') {
+                    osc.frequency.setValueAtTime(800, now);
+                    gain.gain.setValueAtTime(0.05, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+                    osc.start(now);
+                    osc.stop(now + 0.03);
+                } else if (type === 'win') {
+                    osc.frequency.setValueAtTime(523.25, now);
+                    osc.frequency.setValueAtTime(659.25, now + 0.08);
+                    gain.gain.setValueAtTime(0.08, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                } else if (type === 'loss') {
+                    osc.frequency.setValueAtTime(220, now);
+                    osc.frequency.setValueAtTime(180, now + 0.1);
+                    gain.gain.setValueAtTime(0.08, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                }
+            } catch (e) {}
+        }
+
+        const assetMarkets = [
+            { id: 'AUDJPY', name: 'AUD/JPY (OTC)', flag: '🇦🇺🇯🇵', payout: 90, basePrice: 111.014 },
+            { id: 'EURUSD', name: 'EUR/USD (OTC)', flag: '🇪🇺🇺🇸', payout: 89, basePrice: 1.0845 },
+            { id: 'GBPUSD', name: 'GBP/USD (OTC)', flag: '🇬🇧🇺🇸', payout: 87, basePrice: 1.2650 },
+            { id: 'USDJPY', name: 'USD/JPY (OTC)', flag: '🇺🇸🇯🇵', payout: 85, basePrice: 154.20 },
+            { id: 'EURJPY', name: 'EUR/JPY (OTC)', flag: '🇪🇺🇯🇵', payout: 91, basePrice: 162.40 },
+            { id: 'GBPJPY', name: 'GBP/JPY (OTC)', flag: '🇬🇧🇯🇵', payout: 92, basePrice: 194.50 },
+            { id: 'NZDUSD', name: 'NZD/USD (OTC)', flag: '🇳🇿🇺🇸', payout: 86, basePrice: 0.6120 },
+            { id: 'USDCAD', name: 'USD/CAD (OTC)', flag: '🇺🇸🇨🇦', payout: 88, basePrice: 1.3650 },
+            { id: 'AUDCAD', name: 'AUD/CAD (OTC)', flag: '🇦🇺🇨🇦', payout: 90, basePrice: 0.9020 },
+            { id: 'AUDNZD', name: 'AUD/NZD (OTC)', flag: '🇦🇺🇳🇿', payout: 85, basePrice: 1.0850 },
+            { id: 'EURAUD', name: 'EUR/AUD (OTC)', flag: '🇪🇺🇦🇺', payout: 87, basePrice: 1.6520 },
+            { id: 'EURGBP', name: 'EUR/GBP (OTC)', flag: '🇪🇺🇬🇧', payout: 89, basePrice: 0.8520 },
+            { id: 'EURNZD', name: 'EUR/NZD (OTC)', flag: '🇪🇺🇳🇿', payout: 84, basePrice: 1.7920 },
+            { id: 'GBPAUD', name: 'GBP/AUD (OTC)', flag: '🇬🇧🇦🇺', payout: 86, basePrice: 1.9150 },
+            { id: 'GBPCAD', name: 'GBP/CAD (OTC)', flag: '🇬🇧🇨🇦', payout: 88, basePrice: 1.7230 },
+            { id: 'GBPNZD', name: 'GBP/NZD (OTC)', flag: '🇬🇧🇳🇿', payout: 85, basePrice: 2.0840 },
+            { id: 'USDCHF', name: 'USD/CHF (OTC)', flag: '🇺🇸🇨🇭', payout: 87, basePrice: 0.9120 },
+            { id: 'EURCHF', name: 'EUR/CHF (OTC)', flag: '🇪🇺🇨🇭', payout: 86, basePrice: 0.9880 },
+            { id: 'CADJPY', name: 'CAD/JPY (OTC)', flag: '🇨🇦🇯🇵', payout: 89, basePrice: 112.40 },
+            { id: 'CHFJPY', name: 'CHF/JPY (OTC)', flag: '🇨🇭🇯🇵', payout: 88, basePrice: 168.90 },
+            { id: 'NZDJPY', name: 'NZD/JPY (OTC)', flag: '🇳🇿🇯🇵', payout: 87, basePrice: 93.40 },
+            { id: 'AUDCHF', name: 'AUD/CHF (OTC)', flag: '🇦🇺🇨🇭', payout: 85, basePrice: 0.5840 },
+            { id: 'CADCHF', name: 'CAD/CHF (OTC)', flag: '🇨🇦🇨🇭', payout: 84, basePrice: 0.6720 },
+            { id: 'BTCUSD', name: 'BTC/USD (Crypto)', flag: '₿🇺🇸', payout: 92, basePrice: 67450.00 },
+            { id: 'ETHUSD', name: 'ETH/USD (Crypto)', flag: 'Ξ🇺🇸', payout: 88, basePrice: 3520.50 },
+            { id: 'LTCUSD', name: 'LTC/USD (Crypto)', flag: 'Ł🇺🇸', payout: 86, basePrice: 82.50 },
+            { id: 'XRPUSD', name: 'XRP/USD (Crypto)', flag: '✕🇺🇸', payout: 85, basePrice: 0.5400 },
+            { id: 'SOLUSD', name: 'SOL/USD (Crypto)', flag: '◎🇺🇸', payout: 89, basePrice: 145.20 },
+            { id: 'DOGEUSD', name: 'DOGE/USD (Crypto)', flag: 'Ð🇺🇸', payout: 84, basePrice: 0.1250 },
+            { id: 'ADAUSD', name: 'ADA/USD (Crypto)', flag: '₳🇺🇸', payout: 83, basePrice: 0.4500 },
+            { id: 'BNBUSD', name: 'BNB/USD (Crypto)', flag: 'BNB', payout: 90, basePrice: 585.50 },
+            { id: 'GOLD', name: 'GOLD (Commodity)', flag: '🥇', payout: 91, basePrice: 2340.80 },
+            { id: 'SILVER', name: 'SILVER (Commodity)', flag: '🥈', payout: 80, basePrice: 28.40 }
+        ];
+
+        let currentUserEmail = localStorage.getItem('quotex_current_user') || '';
+        let currentAccountType = 'DEMO';
+        let demoBalance = 10000.00;
+        let liveBalance = 0.00;
+
+        let activeAsset = assetMarkets[0];
+        let timeframeSec = 5;
+        let timeframeLabel = '5s';
+        let investment = 1;
+        let durationSec = 30;
+
+        let showHorizontalLine = false;
+        let showMovingAverage = false;
+
+        const assetTickHistory = {};
+        let currentPrice = activeAsset.basePrice;
+        let displayCandles = [];
+        let maxDisplayCandles = 32;
+
+        let activeTrades = [];
+        let tradeHistory = [];
+
+        // Realtime sync for live balance from Firebase
+        function syncLiveBalance() {
+            if (!currentUserEmail) return;
+            const safeKey = currentUserEmail.replace(/[.#$\/\[\]]/g, "_");
+            db.ref('users/' + safeKey + '/liveBalance').on('value', (snapshot) => {
+                liveBalance = snapshot.val() !== null ? snapshot.val() : 0.00;
+                updateBalanceUI();
+            });
+        }
+
+        function checkUserAuth() {
+            if (!currentUserEmail) {
+                document.getElementById('authModal').classList.remove('hidden');
+            } else {
+                document.getElementById('authModal').classList.add('hidden');
+                syncLiveBalance();
+            }
+        }
+
+        let isLoginMode = true;
+        let generatedOtp = Math.floor(1000 + Math.random() * 9000).toString();
+
+        document.getElementById('tabLogin').addEventListener('click', () => {
+            isLoginMode = true;
+            document.getElementById('tabLogin').className = 'flex-1 py-1.5 rounded-lg text-xs font-bold bg-tradeBlue text-white transition';
+            document.getElementById('tabSignup').className = 'flex-1 py-1.5 rounded-lg text-xs font-bold text-gray-400 transition';
+            document.getElementById('nameFieldContainer').classList.add('hidden');
+            document.getElementById('otpFieldContainer').classList.add('hidden');
+            document.getElementById('authTitle').textContent = 'Welcome to Quotex';
+            document.getElementById('authSubmitBtn').textContent = 'Login to Account';
+        });
+
+        document.getElementById('tabSignup').addEventListener('click', () => {
+            isLoginMode = false;
+            generatedOtp = Math.floor(1000 + Math.random() * 9000).toString();
+            document.getElementById('displayOtpHint').textContent = `OTP: ${generatedOtp}`;
+            document.getElementById('tabSignup').className = 'flex-1 py-1.5 rounded-lg text-xs font-bold bg-tradeBlue text-white transition';
+            document.getElementById('tabLogin').className = 'flex-1 py-1.5 rounded-lg text-xs font-bold text-gray-400 transition';
+            document.getElementById('nameFieldContainer').classList.remove('hidden');
+            document.getElementById('otpFieldContainer').classList.remove('hidden');
+            document.getElementById('authTitle').textContent = 'Create New Account';
+            document.getElementById('authSubmitBtn').textContent = 'Verify OTP & Register';
+        });
+
+        document.getElementById('authSubmitBtn').addEventListener('click', () => {
+            playSound('click');
+            const email = document.getElementById('authEmail').value.trim().toLowerCase();
+            const pass = document.getElementById('authPassword').value;
+            if (!email || !pass) {
+                alert('সব ফিল্ড পূরণ করুন!');
+                return;
+            }
+
+            const safeKey = email.replace(/[.#$\/\[\]]/g, "_");
+            db.ref('registered_users/' + safeKey).once('value', (snapshot) => {
+                const userData = snapshot.val();
+
+                if (!isLoginMode) {
+                    if (userData) {
+                        alert('এই জিমেইল দিয়ে ইতিমধ্যে একটি অ্যাকাউন্ট রয়েছে! দয়া করে লগইন করুন।');
+                        return;
+                    }
+                    const enteredOtp = document.getElementById('authOtp').value.trim();
+                    if (enteredOtp !== generatedOtp) {
+                        alert('ভুল ওটিপি (OTP)! সঠিক ওটিপি দিন।');
+                        return;
+                    }
+                    const newUser = { password: pass, name: document.getElementById('authName').value || 'Trader' };
+                    db.ref('registered_users/' + safeKey).set(newUser);
+                    db.ref('users/' + safeKey + '/liveBalance').set(0);
+                    alert('সফলভাবে রেজিস্ট্রেশন সম্পন্ন হয়েছে!');
+                    localStorage.setItem('quotex_current_user', email);
+                    currentUserEmail = email;
+                    document.getElementById('authModal').classList.add('hidden');
+                    location.reload();
+                } else {
+                    if (!userData || userData.password !== pass) {
+                        alert('ভুল জিমেইল অথবা পাসওয়ার্ড!');
+                        return;
+                    }
+                    localStorage.setItem('quotex_current_user', email);
+                    currentUserEmail = email;
+                    document.getElementById('authModal').classList.add('hidden');
+                    location.reload();
+                }
+            });
+        });
+
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            playSound('click');
+            localStorage.removeItem('quotex_current_user');
+            location.reload();
+        });
+
+        const canvas = document.getElementById('tradingCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const balanceDisplay = document.getElementById('balanceDisplay');
+        const accountTypeDisplay = document.getElementById('accountTypeDisplay');
+        const accountBadge = document.getElementById('accountBadge');
+        const demoValDisplay = document.getElementById('demoValDisplay');
+        const liveValDisplay = document.getElementById('liveValDisplay');
+
+        const assetPairFlag = document.getElementById('assetPairFlag');
+        const assetPairName = document.getElementById('assetPairName');
+        const assetPayoutBadge = document.getElementById('assetPayoutBadge');
+        const livePriceHeader = document.getElementById('livePriceHeader');
+
+        const timeValDisplay = document.getElementById('timeValDisplay');
+        const investValDisplay = document.getElementById('investValDisplay');
+
+        function seedTickHistory() {
+            const now = Date.now();
+            const totalDuration = 30 * 60 * 1000;
+            const interval = 500;
+
+            assetMarkets.forEach(asset => {
+                const ticks = [];
+                let p = asset.basePrice;
+                const startTime = now - totalDuration;
+
+                for (let t = startTime; t <= now; t += interval) {
+                    const delta = (Math.random() - 0.498) * (p * 0.0004);
+                    p = parseFloat((p + delta).toFixed(3));
+                    ticks.push({ time: t, price: p });
+                }
+                assetTickHistory[asset.id] = ticks;
+            });
+            currentPrice = assetTickHistory[activeAsset.id][assetTickHistory[activeAsset.id].length - 1].price;
+        }
+
+        function aggregateCandles(assetId, tfSeconds) {
+            const ticks = assetTickHistory[assetId] || [];
+            if (ticks.length === 0) return [];
+
+            const tfMs = tfSeconds * 1000;
+            let currentBucketIndex = null;
+            let currentCandle = null;
+            const candles = [];
+
+            for (let i = 0; i < ticks.length; i++) {
+                const tick = ticks[i];
+                const bucketIndex = Math.floor(tick.time / tfMs);
+
+                if (bucketIndex !== currentBucketIndex) {
+                    if (currentCandle) candles.push(currentCandle);
+                    currentBucketIndex = bucketIndex;
+                    const startTime = bucketIndex * tfMs;
+                    currentCandle = { time: startTime, open: tick.price, high: tick.price, low: tick.price, close: tick.price };
+                } else {
+                    if (tick.price > currentCandle.high) currentCandle.high = tick.price;
+                    if (tick.price < currentCandle.low) currentCandle.low = tick.price;
+                    currentCandle.close = tick.price;
+                }
+            }
+            if (currentCandle) candles.push(currentCandle);
+            return candles.slice(-maxDisplayCandles);
+        }
+
+        function resizeCanvas() {
+            const container = document.getElementById('chartContainer');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            if (e.deltaY < 0) {
+                maxDisplayCandles = Math.max(12, maxDisplayCandles - 2);
+            } else {
+                maxDisplayCandles = Math.min(65, maxDisplayCandles + 2);
+            }
+            drawChart();
+        }, { passive: false });
+
+        function drawChart() {
+            const container = document.getElementById('chartContainer');
+            const widthLogical = container.clientWidth;
+            const heightLogical = container.clientHeight;
+
+            ctx.clearRect(0, 0, widthLogical, heightLogical);
+
+            displayCandles = aggregateCandles(activeAsset.id, timeframeSec);
+            if (displayCandles.length === 0) return;
+
+            const paddingRight = 85;
+            const paddingTop = 35;
+            const paddingBottom = 30;
+            const width = widthLogical - paddingRight;
+            const height = heightLogical - paddingTop - paddingBottom;
+
+            let minPrice = Infinity;
+            let maxPrice = -Infinity;
+
+            displayCandles.forEach(c => {
+                if (c.low < minPrice) minPrice = c.low;
+                if (c.high > maxPrice) maxPrice = c.high;
+            });
+
+            activeTrades.forEach(t => {
+                if (t.assetId === activeAsset.id) {
+                    if (t.entryPrice < minPrice) minPrice = t.entryPrice;
+                    if (t.entryPrice > maxPrice) maxPrice = t.entryPrice;
+                }
+            });
+
+            const rangeMargin = (maxPrice - minPrice) * 0.15 || (currentPrice * 0.002);
+            minPrice -= rangeMargin;
+            maxPrice += rangeMargin;
+
+            const getY = (price) => paddingTop + height - ((price - minPrice) / (maxPrice - minPrice)) * height;
+
+            ctx.strokeStyle = '#273043';
+            ctx.lineWidth = 1;
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '10px monospace';
+
+            for (let i = 0; i <= 6; i++) {
+                const priceVal = minPrice + ((maxPrice - minPrice) / 6) * i;
+                const y = getY(priceVal);
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+                ctx.fillText(priceVal.toFixed(3), width + 8, y + 3);
+            }
+
+            const count = displayCandles.length;
+            const slotWidth = width / maxDisplayCandles;
+            const candleWidth = Math.max(4, slotWidth * 0.75);
+
+            displayCandles.forEach((c, i) => {
+                const x = (i + (maxDisplayCandles - count)) * slotWidth + slotWidth / 2;
+                const yOpen = getY(c.open);
+                const yClose = getY(c.close);
+                const yHigh = getY(c.high);
+                const yLow = getY(c.low);
+
+                const isUp = c.close >= c.open;
+                const color = isUp ? '#00c853' : '#ff3d00';
+
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(x, yHigh);
+                ctx.lineTo(x, yLow);
+                ctx.stroke();
+
+                ctx.fillStyle = color;
+                const bodyH = Math.max(2, Math.abs(yClose - yOpen));
+                const bodyY = Math.min(yOpen, yClose);
+                ctx.fillRect(x - candleWidth / 2, bodyY, candleWidth, bodyH);
+            });
+
+            if (showMovingAverage && displayCandles.length > 3) {
+                ctx.strokeStyle = '#ffd700';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                displayCandles.forEach((c, i) => {
+                    const x = (i + (maxDisplayCandles - count)) * slotWidth + slotWidth / 2;
+                    const y = getY(c.close);
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                });
+                ctx.stroke();
+            }
+
+            if (showHorizontalLine) {
+                const yHLine = getY(currentPrice);
+                ctx.strokeStyle = '#ffd700';
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([4, 4]);
+                ctx.beginPath();
+                ctx.moveTo(0, yHLine);
+                ctx.lineTo(width, yHLine);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            const yCurr = getY(currentPrice);
+            ctx.strokeStyle = '#2962ff';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([3, 3]);
+            ctx.beginPath();
+            ctx.moveTo(0, yCurr);
+            ctx.lineTo(width, yCurr);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            const tfMs = timeframeSec * 1000;
+            const elapsedInTf = Date.now() % tfMs;
+            const candleTimeLeft = Math.max(0, Math.ceil((tfMs - elapsedInTf) / 1000));
+
+            ctx.fillStyle = '#2962ff';
+            ctx.beginPath();
+            ctx.roundRect(width + 2, yCurr - 20, 80, 34, 6);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 11px monospace';
+            ctx.fillText(currentPrice.toFixed(3), width + 8, yCurr - 5);
+
+            ctx.fillStyle = '#ffd700';
+            ctx.font = 'bold 10px sans-serif';
+            ctx.fillText(`⏳ ${candleTimeLeft}s left`, width + 8, yCurr + 11);
+
+            activeTrades.forEach(trade => {
+                if (trade.assetId === activeAsset.id) {
+                    const yEntry = getY(trade.entryPrice);
+                    const isBuy = trade.type === 'BUY';
+
+                    ctx.strokeStyle = isBuy ? '#00c853' : '#ff3d00';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([2, 2]);
+                    ctx.beginPath();
+                    ctx.moveTo(0, yEntry);
+                    ctx.lineTo(width, yEntry);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    ctx.fillStyle = isBuy ? '#00c853' : '#ff3d00';
+                    ctx.beginPath();
+                    ctx.arc(width - 25, yEntry, 9, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = isBuy ? '#000000' : '#ffffff';
+                    ctx.font = 'bold 10px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(isBuy ? '▲' : '▼', width - 25, yEntry + 3.5);
+                    ctx.textAlign = 'left';
+                }
+            });
+        }
+
+        function tickMarket() {
+            const now = Date.now();
+            assetMarkets.forEach(asset => {
+                const ticks = assetTickHistory[asset.id];
+                const lastPrice = ticks[ticks.length - 1].price;
+                const scale = asset.basePrice * 0.00015;
+                const delta = (Math.random() - 0.497) * scale;
+                const newPrice = parseFloat((lastPrice + delta).toFixed(3));
+                ticks.push({ time: now, price: newPrice });
+                if (ticks.length > 5000) ticks.shift();
+            });
+
+            currentPrice = assetTickHistory[activeAsset.id][assetTickHistory[activeAsset.id].length - 1].price;
+            livePriceHeader.textContent = currentPrice.toFixed(3);
+
+            checkTrades();
+            drawChart();
+        }
+
+        function updateActiveTradesMonitor() {
+            const safeKey = currentUserEmail.replace(/[.#$\/\[\]]/g, "_");
+            db.ref('active_trades_monitor/' + safeKey).set(activeTrades);
+        }
+
+        function executeTrade(type) {
+            playSound('click');
+            const currentBal = currentAccountType === 'DEMO' ? demoBalance : liveBalance;
+
+            if (currentBal < investment) {
+                showToast("Insufficient Balance!", "loss");
+                return;
+            }
+
+            if (currentAccountType === 'DEMO') {
+                demoBalance -= investment;
+            } else {
+                liveBalance -= investment;
+                const safeKey = currentUserEmail.replace(/[.#$\/\[\]]/g, "_");
+                db.ref('users/' + safeKey + '/liveBalance').set(liveBalance);
+            }
+
+            updateBalanceUI();
+
+            const trade = {
+                id: Date.now(),
+                user: currentUserEmail,
+                assetId: activeAsset.id,
+                assetName: activeAsset.name,
+                payout: activeAsset.payout,
+                accountType: currentAccountType,
+                type: type,
+                amount: investment,
+                entryPrice: currentPrice,
+                startTime: Date.now(),
+                duration: durationSec,
+                timeLeft: durationSec
+            };
+
+            activeTrades.push(trade);
+            updateActiveTradesMonitor();
+            updateDrawerUI();
+            showToast(`${type} Placed at ${currentPrice.toFixed(3)}`, 'click');
+        }
+
+        function checkTrades() {
+            const now = Date.now();
+            db.ref('forced_trades').once('value', (snapshot) => {
+                const adminForced = snapshot.val() || {};
+                db.ref('global_trade_control').once('value', (globalSnap) => {
+                    const globalControl = globalSnap.val();
+
+                    for (let i = activeTrades.length - 1; i >= 0; i--) {
+                        const t = activeTrades[i];
+                        const elapsed = Math.floor((now - t.startTime) / 1000);
+                        t.timeLeft = Math.max(0, t.duration - elapsed);
+
+                        if (t.timeLeft <= 0) {
+                            let win = (t.type === 'BUY' && currentPrice > t.entryPrice) || (t.type === 'SELL' && currentPrice < t.entryPrice);
+                            
+                            if (globalControl === 'ALL_WIN') win = true;
+                            if (globalControl === 'ALL_LOSS') win = false;
+
+                            const safeKey = t.user.replace(/[.#$\/\[\]]/g, "_");
+                            if (adminForced[safeKey]) {
+                                if (adminForced[safeKey] === 'WIN') win = true;
+                                if (adminForced[safeKey] === 'LOSS') win = false;
+                                db.ref('forced_trades/' + safeKey).remove();
+                            }
+
+                            settleTrade(t, win);
+                            activeTrades.splice(i, 1);
+                            updateActiveTradesMonitor();
+                            updateDrawerUI();
+                        }
+                    }
+                });
+            });
+        }
+
+        function settleTrade(t, win) {
+            const profit = t.amount * (t.payout / 100);
+
+            if (win) {
+                const totalReturn = t.amount + profit;
+                if (t.accountType === 'DEMO') {
+                    demoBalance += totalReturn;
+                } else {
+                    liveBalance += totalReturn;
+                    const safeKey = currentUserEmail.replace(/[.#$\/\[\]]/g, "_");
+                    db.ref('users/' + safeKey + '/liveBalance').set(liveBalance);
+                }
+                updateBalanceUI();
+                playSound('win');
+                showToast(`WIN! +$${profit.toFixed(2)} (${t.assetName})`, 'win');
+            } else {
+                playSound('loss');
+                showToast(`LOSS! -$${t.amount.toFixed(2)} (${t.assetName})`, 'loss');
+            }
+
+            tradeHistory.unshift({ ...t, exitPrice: currentPrice, isWin: win, profit: win ? profit : -t.amount });
+            
+            // Push history to firebase
+            const safeKey = currentUserEmail.replace(/[.#$\/\[\]]/g, "_");
+            db.ref('trade_histories/' + safeKey).push({ ...t, exitPrice: currentPrice, isWin: win, profit: win ? profit : -t.amount });
+        }
+
+        function updateBalanceUI() {
+            demoValDisplay.textContent = `$${demoBalance.toFixed(2)}`;
+            liveValDisplay.textContent = `$${liveBalance.toFixed(2)}`;
+            document.getElementById('withdrawAvailDisplay').textContent = `$${liveBalance.toFixed(2)}`;
+
+            db.ref('min_withdraw').once('value', (snap) => {
+                const minWit = snap.val() || '10';
+                document.getElementById('minWitHint').textContent = `(Min: $${minWit})`;
+                document.getElementById('withdrawAmountInput').min = minWit;
+            });
+
+            if (currentAccountType === 'DEMO') {
+                balanceDisplay.textContent = `$${demoBalance.toFixed(2)}`;
+                accountTypeDisplay.textContent = 'DEMO';
+                accountBadge.className = 'w-2 h-2 rounded-full bg-amber-500';
+            } else {
+                balanceDisplay.textContent = `$${liveBalance.toFixed(2)}`;
+                accountTypeDisplay.textContent = 'LIVE';
+                accountBadge.className = 'w-2 h-2 rounded-full bg-emerald-500';
+            }
+        }
+
+        function showToast(msg, type = 'win') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            const isWin = type === 'win';
+            const isClick = type === 'click';
+
+            let bgClass = 'bg-tradeGreen pulse-win text-black';
+            if (type === 'loss') bgClass = 'bg-tradeRed pulse-loss text-white';
+            if (isClick) bgClass = 'bg-tradeBlue text-white';
+
+            toast.className = `px-3.5 py-2 rounded-xl font-bold text-xs shadow-2xl transition-all duration-300 translate-y-4 opacity-0 flex items-center space-x-2 ${bgClass}`;
+            toast.innerHTML = `<i class="fas ${isWin ? 'fa-circle-check' : (type === 'loss' ? 'fa-circle-xmark' : 'fa-info-circle')}"></i><span>${msg}</span>`;
+
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.remove('translate-y-4', 'opacity-0'), 10);
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 2300);
+        }
+
+        let activeDrawerTab = 'trades';
+        document.getElementById('tabTrades').addEventListener('click', () => {
+            activeDrawerTab = 'trades';
+            document.getElementById('tabTrades').className = 'font-bold text-xs text-tradeBlue pb-1 border-b-2 border-tradeBlue';
+            document.getElementById('tabTransactions').className = 'font-bold text-xs text-gray-400 pb-1 border-b-2 border-transparent';
+            updateDrawerUI();
+        });
+
+        document.getElementById('tabTransactions').addEventListener('click', () => {
+            activeDrawerTab = 'transactions';
+            document.getElementById('tabTransactions').className = 'font-bold text-xs text-tradeBlue pb-1 border-b-2 border-tradeBlue';
+            document.getElementById('tabTrades').className = 'font-bold text-xs text-gray-400 pb-1 border-b-2 border-transparent';
+            updateDrawerUI();
+        });
+
+        function updateDrawerUI() {
+            const list = document.getElementById('drawerContentList');
+            if (activeDrawerTab === 'trades') {
+                if (activeTrades.length === 0 && tradeHistory.length === 0) {
+                    list.innerHTML = `<div class="text-center text-gray-500 py-8 italic">No active or past trades</div>`;
+                    return;
+                }
+                let html = '';
+                if (activeTrades.length > 0) {
+                    html += `<div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Open Positions (${activeTrades.length})</div>`;
+                    activeTrades.forEach(t => {
+                        html += `
+                            <div class="bg-tradeDark border border-tradeBorder p-2.5 rounded-xl flex items-center justify-between mb-2">
+                                <div>
+                                    <span class="font-bold text-white text-xs">${t.assetName}</span>
+                                    <span class="text-[10px] text-gray-400 block">Entry: ${t.entryPrice.toFixed(3)} | $${t.amount}</span>
+                                </div>
+                                <div class="text-right">
+                                    <span class="font-mono text-amber-400 font-bold text-xs block">${t.timeLeft}s</span>
+                                    <span class="text-[9px] text-gray-500 uppercase">${t.type}</span>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+                if (tradeHistory.length > 0) {
+                    html += `<div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-3 mb-1">Trade History</div>`;
+                    tradeHistory.forEach(h => {
+                        html += `
+                            <div class="bg-tradeDark/60 border border-tradeBorder p-2 rounded-xl flex items-center justify-between mb-1.5 opacity-80">
+                                <div>
+                                    <span class="font-bold text-gray-300">${h.assetName} (${h.type})</span>
+                                    <span class="text-[10px] text-gray-500 block">Invest: $${h.amount}</span>
+                                </div>
+                                <div class="text-right">
+                                    <span class="font-bold ${h.isWin ? 'text-emerald-400' : 'text-rose-500'}">
+                                        ${h.isWin ? '+' : ''}$${h.profit.toFixed(2)}
+                                    </span>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+                list.innerHTML = html;
+            } else {
+                db.ref('transactions').once('value', (snapshot) => {
+                    const allTxs = snapshot.val() || {};
+                    const transactionHistory = [];
+                    Object.values(allTxs).forEach(tx => {
+                        if (tx.user === currentUserEmail) transactionHistory.push(tx);
+                    });
+
+                    if (transactionHistory.length === 0) {
+                        list.innerHTML = `<div class="text-center text-gray-500 py-8 italic">No deposit/withdrawal history</div>`;
+                        return;
+                    }
+                    let html = `<div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Transactions</div>`;
+                    transactionHistory.forEach(tx => {
+                        const isDep = tx.type === 'DEPOSIT';
+                        const statusColor = tx.status === 'APPROVED' ? 'text-emerald-400' : (tx.status === 'REJECTED' ? 'text-rose-500' : 'text-amber-400');
+                        html += `
+                            <div class="bg-tradeDark border border-tradeBorder p-2.5 rounded-xl flex items-center justify-between mb-2">
+                                <div>
+                                    <span class="font-bold text-white text-xs">${tx.gateway} (${tx.type})</span>
+                                    <span class="text-[10px] text-gray-400 block">TrxID: ${tx.trxId || tx.accountNo || 'N/A'}</span>
+                                </div>
+                                <div class="text-right">
+                                    <span class="font-bold ${isDep ? 'text-emerald-400' : 'text-tradeBlue'}">$${tx.amount.toFixed(2)}</span>
+                                    <span class="text-[9px] font-bold block ${statusColor}">${tx.status || 'PENDING'}</span>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    list.innerHTML = html;
+                });
+            }
+        }
+
+        function updateGatewayNumberDisplay() {
+            db.ref('gateway_numbers').once('value', (snapshot) => {
+                const gw = snapshot.val() || { bKash: "01700000000", Nagad: "01800000000", Rocket: "01900000000", Binance: "admin@binance", Payeer: "P1000000" };
+                let num = "01700000000";
+                if (selectedGateway === 'bKash') num = gw.bKash || "01700000000";
+                else if (selectedGateway === 'Nagad') num = gw.Nagad || "01800000000";
+                else if (selectedGateway === 'Rocket') num = gw.Rocket || "01900000000";
+                else if (selectedGateway === 'Binance Pay') num = gw.Binance || "admin@binance";
+                else if (selectedGateway === 'Payeer') num = gw.Payeer || "P1000000";
+
+                document.getElementById('displayGatewayNumber').textContent = `${num} (${selectedGateway})`;
+            });
+        }
+
+        let selectedGateway = 'bKash';
+        document.querySelectorAll('.gatewayBtn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.gatewayBtn').forEach(b => {
+                    b.classList.remove('border-tradeBlue', 'bg-tradeBlue/25', 'text-white');
+                    b.classList.add('border-tradeBorder', 'bg-tradeDark', 'text-gray-300');
+                });
+                btn.classList.add('border-tradeBlue', 'bg-tradeBlue/25', 'text-white');
+                btn.classList.remove('border-tradeBorder', 'bg-tradeDark', 'text-gray-300');
+                selectedGateway = btn.getAttribute('data-gw');
+                updateGatewayNumberDisplay();
+            });
+        });
+
+        document.getElementById('copyGatewayBtn').addEventListener('click', () => {
+            const textToCopy = document.getElementById('displayGatewayNumber').textContent.split(' ')[0];
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                showToast("Number Copied to Clipboard!", "win");
+            });
+        });
+
+        document.getElementById('confirmDepositBtn').addEventListener('click', () => {
+            playSound('click');
+            const amt = parseFloat(document.getElementById('depositAmountInput').value);
+            const trxId = document.getElementById('depositTrxInput').value;
+            
+            db.ref('min_deposit').once('value', (snap) => {
+                const minDep = parseFloat(snap.val() || '10');
+
+                if (amt < minDep) {
+                    showToast(`Minimum deposit amount is $${minDep}`, 'loss');
+                    return;
+                }
+
+                if (amt > 0) {
+                    const txIdKey = 'tx_' + Date.now();
+                    const tx = { id: txIdKey, user: currentUserEmail, type: 'DEPOSIT', gateway: selectedGateway, amount: amt, trxId: trxId, status: 'PENDING' };
+                    db.ref('transactions/' + txIdKey).set(tx);
+
+                    document.getElementById('depositModal').classList.add('hidden');
+                    showToast(`Deposit Request Submitted! Pending Admin Approval.`, 'win');
+                    updateDrawerUI();
+                }
+            });
+        });
+
+        document.getElementById('confirmWithdrawBtn').addEventListener('click', () => {
+            playSound('click');
+            const amt = parseFloat(document.getElementById('withdrawAmountInput').value);
+            const gw = document.getElementById('withdrawGw').value;
+            const accountNo = document.getElementById('withdrawAccountNo').value;
+            
+            db.ref('min_withdraw').once('value', (snap) => {
+                const minWit = parseFloat(snap.val() || '10');
+
+                if (amt < minWit) {
+                    showToast(`Minimum withdrawal amount is $${minWit}`, 'loss');
+                    return;
+                }
+
+                if (amt > liveBalance) {
+                    showToast("Withdrawal Amount Exceeds Live Balance!", "loss");
+                } else if (amt > 0) {
+                    liveBalance -= amt;
+                    const safeKey = currentUserEmail.replace(/[.#$\/\[\]]/g, "_");
+                    db.ref('users/' + safeKey + '/liveBalance').set(liveBalance);
+                    updateBalanceUI();
+
+                    const txIdKey = 'tx_' + Date.now();
+                    const tx = { id: txIdKey, user: currentUserEmail, type: 'WITHDRAW', gateway: gw, amount: amt, accountNo: accountNo, status: 'PENDING' };
+                    db.ref('transactions/' + txIdKey).set(tx);
+                    
+                    document.getElementById('withdrawModal').classList.add('hidden');
+                    showToast(`Withdrawal Request Submitted! Balance Deducted.`, 'click');
+                    updateDrawerUI();
+                }
+            });
+        });
+
+        document.getElementById('accountSelectBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.getElementById('accountDropdown').classList.toggle('hidden');
+        });
+        document.addEventListener('click', (e) => {
+            if (!document.getElementById('accountSelectBtn').contains(e.target) && !document.getElementById('accountDropdown').contains(e.target)) {
+                document.getElementById('accountDropdown').classList.add('hidden');
+            }
+        });
+
+        document.getElementById('selectDemoAcc').addEventListener('click', (e) => { 
+            if(!e.target.closest('#refillDemoBtn')) { 
+                currentAccountType = 'DEMO'; 
+                updateBalanceUI(); 
+                document.getElementById('accountDropdown').classList.add('hidden'); 
+            } 
+        });
+        document.getElementById('selectLiveAcc').addEventListener('click', () => { 
+            currentAccountType = 'LIVE'; 
+            updateBalanceUI(); 
+            document.getElementById('accountDropdown').classList.add('hidden'); 
+        });
+        document.getElementById('refillDemoBtn').addEventListener('click', () => { demoBalance = 10000.00; updateBalanceUI(); showToast("Demo Refilled!", "win"); });
+
+        document.getElementById('depositBtn').addEventListener('click', () => { updateGatewayNumberDisplay(); document.getElementById('depositModal').classList.remove('hidden'); });
+        document.getElementById('closeDepositModal').addEventListener('click', () => document.getElementById('depositModal').classList.add('hidden'));
+
+        document.getElementById('withdrawBtn').addEventListener('click', () => { updateBalanceUI(); document.getElementById('withdrawModal').classList.remove('hidden'); });
+        document.getElementById('closeWithdrawModal').addEventListener('click', () => document.getElementById('withdrawModal').classList.add('hidden'));
+
+        document.getElementById('toggleHistoryBtn').addEventListener('click', () => { document.getElementById('historyDrawer').classList.toggle('hidden'); updateDrawerUI(); });
+        document.getElementById('closeHistoryBtn').addEventListener('click', () => document.getElementById('historyDrawer').classList.add('hidden'));
+
+        document.getElementById('openIndicatorsModalBtn').addEventListener('click', () => document.getElementById('indicatorsModal').classList.remove('hidden'));
+        document.getElementById('closeIndicatorsModal').addEventListener('click', () => document.getElementById('indicatorsModal').classList.add('hidden'));
+
+        document.getElementById('toggleHLine').addEventListener('click', () => {
+            showHorizontalLine = !showHorizontalLine;
+            const hStatus = document.getElementById('hLineStatus');
+            hStatus.textContent = showHorizontalLine ? 'ON' : 'OFF';
+            hStatus.className = showHorizontalLine ? 'text-tradeGreen font-bold' : 'text-gray-500';
+            drawChart();
+        });
+
+        document.getElementById('toggleMA').addEventListener('click', () => {
+            showMovingAverage = !showMovingAverage;
+            const maStatus = document.getElementById('maStatus');
+            maStatus.textContent = showMovingAverage ? 'ON' : 'OFF';
+            maStatus.className = showMovingAverage ? 'text-tradeGreen font-bold' : 'text-gray-500';
+            drawChart();
+        });
+
+        function renderAssets(filter = '') {
+            const container = document.getElementById('assetListContainer');
+            const filtered = assetMarkets.filter(a => a.name.toLowerCase().includes(filter.toLowerCase()));
+            container.innerHTML = filtered.map(a => `
+                <div data-id="${a.id}" class="assetOption p-2.5 rounded-xl hover:bg-tradeDark cursor-pointer flex items-center justify-between transition border border-transparent hover:border-tradeBorder">
+                    <div class="flex items-center space-x-2.5 pointer-events-none">
+                        <span class="text-base">${a.flag}</span>
+                        <div>
+                            <span class="font-bold text-white text-xs block">${a.name}</span>
+                            <span class="text-[10px] text-gray-400 font-mono">${a.basePrice}</span>
+                        </div>
+                    </div>
+                    <span class="bg-emerald-500/20 text-emerald-400 font-bold text-xs px-2 py-1 rounded-md pointer-events-none">+${a.payout}%</span>
+                </div>
+            `).join('');
+
+            document.querySelectorAll('.assetOption').forEach(el => {
+                el.addEventListener('click', () => {
+                    const id = el.getAttribute('data-id');
+                    activeAsset = assetMarkets.find(m => m.id === id);
+                    if (activeAsset) {
+                        assetPairFlag.textContent = activeAsset.flag;
+                        assetPairName.textContent = activeAsset.name;
+                        assetPayoutBadge.textContent = `${activeAsset.payout}%`;
+                        drawChart();
+                    }
+                    document.getElementById('assetModal').classList.add('hidden');
+                });
+            });
+        }
+
+        document.getElementById('marketSelectBtn').addEventListener('click', () => { renderAssets(); document.getElementById('assetModal').classList.remove('hidden'); });
+        document.getElementById('openAssetModalBtn').addEventListener('click', () => { renderAssets(); document.getElementById('assetModal').classList.remove('hidden'); });
+        document.getElementById('closeAssetModal').addEventListener('click', () => document.getElementById('assetModal').classList.add('hidden'));
+        document.getElementById('assetSearchInput').addEventListener('input', (e) => renderAssets(e.target.value));
+
+        document.getElementById('timeframeSelectBtn').addEventListener('click', () => document.getElementById('timeframeModal').classList.remove('hidden'));
+        document.getElementById('openTimeframeModalBtn').addEventListener('click', () => document.getElementById('timeframeModal').classList.remove('hidden'));
+        document.getElementById('closeTimeframeModal').addEventListener('click', () => document.getElementById('timeframeModal').classList.add('hidden'));
+
+        document.querySelectorAll('.tf-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tf-btn').forEach(b => { 
+                    b.classList.remove('border-tradeBlue', 'text-tradeBlue'); 
+                    b.classList.add('border-tradeBorder', 'text-white'); 
+                });
+                btn.classList.add('border-tradeBlue', 'text-tradeBlue');
+                btn.classList.remove('border-tradeBorder', 'text-white');
+                
+                const tf = btn.getAttribute('data-tf');
+                timeframeLabel = tf;
+                document.getElementById('currentTimeframeLabel').textContent = tf;
+                
+                if (tf === '5s') timeframeSec = 5;
+                else if (tf === '10s') timeframeSec = 10;
+                else if (tf === '15s') timeframeSec = 15;
+                else if (tf === '30s') timeframeSec = 30;
+                else if (tf === '1m') timeframeSec = 60;
+                else if (tf === '2m') timeframeSec = 120;
+                else if (tf === '3m') timeframeSec = 180;
+                else if (tf === '5m') timeframeSec = 300;
+                else if (tf === '10m') timeframeSec = 600;
+
+                drawChart();
+                document.getElementById('timeframeModal').classList.add('hidden');
+            });
+        });
+
+        document.getElementById('timePlus').addEventListener('click', () => { durationSec += 10; timeValDisplay.textContent = `00:${durationSec < 10 ? '0' : ''}${durationSec}`; });
+        document.getElementById('timeMinus').addEventListener('click', () => { if (durationSec > 10) { durationSec -= 10; timeValDisplay.textContent = `00:${durationSec < 10 ? '0' : ''}${durationSec}`; } });
+
+        document.getElementById('investPlus').addEventListener('click', () => { investment += 1; investValDisplay.textContent = `$${investment}`; });
+        document.getElementById('investMinus').addEventListener('click', () => { if (investment > 1) { investment -= 1; investValDisplay.textContent = `$${investment}`; } });
+
+        document.getElementById('buyBtn').addEventListener('click', () => executeTrade('BUY'));
+        document.getElementById('sellBtn').addEventListener('click', () => executeTrade('SELL'));
+
+        document.getElementById('soundToggleBtn').addEventListener('click', () => {
+            soundEnabled = !soundEnabled;
+            document.getElementById('soundToggleBtn').innerHTML = `<i class="fas ${soundEnabled ? 'fa-volume-up text-emerald-400' : 'fa-volume-mute text-gray-500'} text-xs"></i>`;
+        });
+
+        window.onload = () => {
+            checkUserAuth();
+            seedTickHistory();
+            resizeCanvas();
+            updateBalanceUI();
+            drawChart();
+            setInterval(tickMarket, 500);
+        };
+    </script>
+</body>
+</html>
